@@ -30,6 +30,3 @@ license. The notice is reproduced in `LICENSES/CommonLibSSE-MIT.txt`.
 - Revision: `486b55554f11c9cccc913e11a87085b2a91f706f`
 - License: MIT
 - License file: `LICENSES/spdlog-MIT.txt`
-
-Favorites Menu Extended is an optional compatibility target. No code,
-binaries, menu files, or other assets from that project are redistributed.
