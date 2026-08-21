@@ -3,10 +3,10 @@
 
 #include "Internal.h"
 
+#include <REL/ASM.h>
 #include <REL/Pattern.h>
-
-#include <array>
-#include <cstring>
+#include <REL/Relocation.h>
+#include <REL/Utility.h>
 
 namespace FavoritesToggle
 {
@@ -90,67 +90,11 @@ namespace FavoritesToggle
 
         bool InstallPowerToggle()
         {
-            const REL::Relocation<std::uintptr_t> useQuickkey{
-                kUseQuickkeyID
+            REL::Relocation<std::uintptr_t> call{
+                kUseQuickkeyID,
+                kSpellStateCallOffset
             };
-            const REL::Relocation<std::uintptr_t> spellState{
-                REL::ID(101955)
-            };
-            const auto callsite =
-                useQuickkey.address() + kSpellStateCallOffset;
-            if (useQuickkey.offset() != kUseQuickkeyRva ||
-                spellState.offset() != 0x19A3BA0 ||
-                !REL::Pattern<
-                    "4C 8B C3 48 8B 15 39 3B 08 04 "
-                    "E8 ?? ?? ?? ?? 84 C0 0F 85 F8 00 00 00">()
-                    .match(callsite - 10) ||
-                REL::ASM::CALL5::TARGET(callsite) != spellState.address()) {
-                REX::ERROR("Vanilla Power hook signature mismatch");
-                return false;
-            }
-
-            originalSpellState = spellState.address();
-            const auto wrapper =
-                reinterpret_cast<std::uintptr_t>(&FilterSpellState);
-            const auto stub =
-                REL::GetTrampoline().allocate_branch5(wrapper);
-            const auto* branch =
-                reinterpret_cast<const REL::ASM::JMP14*>(stub);
-            if (!stub ||
-                !detail::FitsCall5(callsite, stub) ||
-                branch->jmp.op != 0xFF ||
-                branch->jmp.rm != 0x25 ||
-                branch->jmp.disp != 0 ||
-                branch->addr != wrapper) {
-                REX::ERROR("Vanilla Power hook trampoline is invalid");
-                return false;
-            }
-
-            constexpr auto size = sizeof(REL::ASM::CALL5);
-            std::array<std::uint8_t, size> original{};
-            std::memcpy(
-                original.data(),
-                reinterpret_cast<const void*>(callsite),
-                size);
-
-            const REL::ASM::CALL5 replacement{ callsite, stub };
-            if (!REL::WriteSafeData(callsite, replacement) ||
-                std::memcmp(
-                    reinterpret_cast<const void*>(callsite),
-                    &replacement,
-                    size) != 0 ||
-                REL::ASM::CALL5::TARGET(callsite) != stub) {
-                const bool restored =
-                    REL::WriteSafeData(callsite, original) &&
-                    std::memcmp(
-                        reinterpret_cast<const void*>(callsite),
-                        original.data(),
-                        size) == 0;
-                REX::ERROR(
-                    "Vanilla Power hook failed; rollback={}",
-                    restored);
-                return false;
-            }
+            originalSpellState = call.write_call<5>(&FilterSpellState);
 
             REX::INFO("Enabled vanilla selected-Power toggling");
             return true;
@@ -159,9 +103,26 @@ namespace FavoritesToggle
 
     bool InstallVanilla()
     {
-        const bool inventory = InstallInventoryToggle();
-        const bool power =
-            Power::ValidateSelected() && InstallPowerToggle();
-        return inventory && power;
+        const REL::Relocation<std::uintptr_t> useQuickkey{
+            kUseQuickkeyID
+        };
+        const REL::Relocation<std::uintptr_t> spellState{
+            REL::ID(101955)
+        };
+        const auto callsite =
+            useQuickkey.address() + kSpellStateCallOffset;
+        if (useQuickkey.offset() != kUseQuickkeyRva ||
+            spellState.offset() != 0x19A3BA0 ||
+            !Power::ValidateSelected() ||
+            !REL::Pattern<
+                "4C 8B C3 48 8B 15 39 3B 08 04 "
+                "E8 ?? ?? ?? ?? 84 C0 0F 85 F8 00 00 00">()
+                .match(callsite - 10) ||
+            REL::ASM::CALL5::TARGET(callsite) != spellState.address()) {
+            REX::ERROR("Vanilla Power hook signature mismatch");
+            return false;
+        }
+
+        return InstallInventoryToggle() && InstallPowerToggle();
     }
 }

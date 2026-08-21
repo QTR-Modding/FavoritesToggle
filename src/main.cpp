@@ -3,6 +3,8 @@
 
 #include "Internal.h"
 
+#include <REL/ASM.h>
+
 namespace FavoritesToggle
 {
     void OnPostLoad(SFSE::MessagingInterface::Message* a_message)
@@ -11,14 +13,8 @@ namespace FavoritesToggle
             return;
         }
 
-        const bool vanilla = InstallVanilla();
-        const bool fme = InstallFme();
-        if (!vanilla || !fme) {
-            REX::ERROR(
-                "Favorites Toggle loaded with inactive features: "
-                "Vanilla={}, FME={}",
-                vanilla,
-                fme);
+        if (!InstallVanilla()) {
+            REX::ERROR("Favorites Toggle is inactive");
         }
     }
 }
@@ -33,14 +29,12 @@ SFSE_PLUGIN_LOAD(const SFSE::LoadInterface* a_sfse)
     SFSE::Init(a_sfse, initInfo);
 
     const auto* messaging = SFSE::GetMessagingInterface();
-    const auto* menu = SFSE::GetMenuInterface();
-    if (!messaging || !menu) {
-        REX::ERROR("Required SFSE interface is unavailable");
+    if (!messaging) {
+        REX::ERROR("SFSE messaging interface is unavailable");
         return false;
     }
 
-    if (!messaging->RegisterListener(FavoritesToggle::OnPostLoad) ||
-        !FavoritesToggle::RegisterMenuBridge(menu)) {
+    if (!messaging->RegisterListener(FavoritesToggle::OnPostLoad)) {
         return false;
     }
 
