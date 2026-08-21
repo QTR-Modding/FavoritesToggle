@@ -40,5 +40,8 @@ target("FavoritesToggle")
         }
     })
 
-    add_files("src/**.cpp")
+    add_files("src/plugin.cpp")
+    add_headerfiles("include/PCH.h")
+    add_includedirs("include")
+    set_pcxxheader("include/PCH.h")
     set_installdir("build/install/Data")
