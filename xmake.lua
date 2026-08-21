@@ -16,8 +16,7 @@ if is_plat("windows") then
     })
 end
 
-local commonlibsf = os.getenv("COMMONLIBSF_PATH") or "lib/commonlibsf"
-includes(commonlibsf)
+includes("lib/commonlibsf")
 
 set_project("FavoritesToggle")
 set_version("0.1.0")

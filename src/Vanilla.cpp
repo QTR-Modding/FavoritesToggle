@@ -12,8 +12,6 @@ namespace FavoritesToggle
 {
     namespace
     {
-        constexpr REL::ID kUseQuickkeyID{ 113918 };
-        constexpr std::uintptr_t kUseQuickkeyRva = 0x1EBF380;
         constexpr std::ptrdiff_t kInventorySignatureOffset = 0x2D5;
         constexpr std::ptrdiff_t kAllowUnequipOffset = 0x2E3;
         constexpr std::ptrdiff_t kSpellStateCallOffset = 0x377;
@@ -45,12 +43,11 @@ namespace FavoritesToggle
         bool InstallInventoryToggle()
         {
             const REL::Relocation<std::uintptr_t> useQuickkey{
-                kUseQuickkeyID
+                RE::ID::FavoritesManager::UseQuickkey
             };
             const auto signature =
                 useQuickkey.address() + kInventorySignatureOffset;
-            if (useQuickkey.offset() != kUseQuickkeyRva ||
-                !REL::Pattern<
+            if (!REL::Pattern<
                     "C6 44 24 30 01 C6 44 24 28 00 "
                     "C6 44 24 20 ?? 4C 8D">().match(signature)) {
                 REX::ERROR("Vanilla inventory toggle signature mismatch");
@@ -91,7 +88,7 @@ namespace FavoritesToggle
         bool InstallPowerToggle()
         {
             REL::Relocation<std::uintptr_t> call{
-                kUseQuickkeyID,
+                RE::ID::FavoritesManager::UseQuickkey,
                 kSpellStateCallOffset
             };
             originalSpellState = call.write_call<5>(&FilterSpellState);
@@ -104,21 +101,19 @@ namespace FavoritesToggle
     bool InstallVanilla()
     {
         const REL::Relocation<std::uintptr_t> useQuickkey{
-            kUseQuickkeyID
-        };
-        const REL::Relocation<std::uintptr_t> spellState{
-            REL::ID(101955)
+            RE::ID::FavoritesManager::UseQuickkey
         };
         const auto callsite =
             useQuickkey.address() + kSpellStateCallOffset;
-        if (useQuickkey.offset() != kUseQuickkeyRva ||
-            spellState.offset() != 0x19A3BA0 ||
-            !Power::ValidateSelected() ||
-            !REL::Pattern<
+        const auto spellState = REL::ASM::CALL5::TARGET(callsite);
+        if (!REL::Pattern<
                 "4C 8B C3 48 8B 15 39 3B 08 04 "
                 "E8 ?? ?? ?? ?? 84 C0 0F 85 F8 00 00 00">()
                 .match(callsite - 10) ||
-            REL::ASM::CALL5::TARGET(callsite) != spellState.address()) {
+            !REL::Pattern<
+                "48 89 5C 24 10 48 89 6C 24 18 "
+                "48 89 74 24 20 48 89 4C 24 08">()
+                .match(spellState)) {
             REX::ERROR("Vanilla Power hook signature mismatch");
             return false;
         }

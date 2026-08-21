@@ -12,7 +12,6 @@ namespace FavoritesToggle
 
     namespace Power
     {
-        [[nodiscard]] bool ValidateSelected();
         [[nodiscard]] bool IsSelected(
             RE::SpellItem* a_spell,
             RE::Actor* a_actor);

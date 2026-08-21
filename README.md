@@ -57,8 +57,6 @@ The DLL is written to:
 build/windows/x64/release/FavoritesToggle.dll
 ```
 
-Set `COMMONLIBSF_PATH` to use another CommonLibSF checkout.
-
 ## License and source
 
 Favorites Toggle is licensed under GPL-3.0-or-later with the exceptions in
