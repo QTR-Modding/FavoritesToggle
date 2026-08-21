@@ -13,11 +13,6 @@ namespace FavoritesToggle::Settings
         REX::TIniSetting<bool> weapons{ "Toggle", "Weapons", true };
         REX::TIniSetting<bool> armor{ "Toggle", "Armor", true };
         REX::TIniSetting<bool> powers{ "Toggle", "Powers", true };
-        REX::TIniSetting<bool> other{
-            "Toggle",
-            "OtherEquippedItems",
-            true
-        };
     }
 
     void Load()
@@ -41,7 +36,7 @@ namespace FavoritesToggle::Settings
         case RE::FormType::kARMO:
             return armor.GetValue();
         default:
-            return other.GetValue();
+            return false;
         }
     }
 

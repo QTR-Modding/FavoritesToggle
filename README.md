@@ -35,20 +35,19 @@ through SFSE.
 
 ## Configuration
 
-`Data/SFSE/Plugins/FavoritesToggle.ini` provides four default-on settings:
+`Data/SFSE/Plugins/FavoritesToggle.ini` provides three default-on settings:
 
 ```ini
 [Toggle]
 Weapons=true
 Armor=true
 Powers=true
-OtherEquippedItems=true
 ```
 
 Set a value to `false` and restart the game to keep that category's original
 repeat-selection behavior. An optional `FavoritesToggleCustom.ini` in the same
 folder overrides the shipped values without replacing the default file.
-`OtherEquippedItems` applies only when Starfield exposes a form as equipped.
+Unrecognized form types keep their original behavior.
 
 ## Compatibility
 
