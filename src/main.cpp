@@ -15,6 +15,12 @@ namespace FavoritesToggle
 
         if (!InstallVanilla()) {
             REX::ERROR("Favorites Toggle is inactive");
+            return;
+        }
+
+        if (!InstallFavoritesMenuExtended(SFSE::GetMenuInterface())) {
+            REX::WARN(
+                "Favorites Menu Extended compatibility is inactive");
         }
     }
 }

@@ -9,6 +9,15 @@
 namespace FavoritesToggle
 {
     [[nodiscard]] bool InstallVanilla();
+    [[nodiscard]] bool InstallFavoritesMenuExtended(
+        const SFSE::MenuInterface* a_menuInterface);
+
+    namespace Toggle
+    {
+        [[nodiscard]] bool TryUnequip(
+            RE::TESBoundObject* a_form,
+            RE::PlayerCharacter* a_player);
+    }
 
     namespace Power
     {

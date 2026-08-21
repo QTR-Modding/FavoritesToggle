@@ -14,7 +14,12 @@ Initial release.
   or refusal paths and honors the equip-state-locked inventory flag.
 - Supports vanilla keyboard keys, mouse menu selection, and gamepad menu
   confirmation.
+- Adds optional Favorites Menu Extended 5.0 compatibility for its additional
+  slots, configured hotkeys, mouse selection, and gamepad confirmation.
+- Gives FME-selected Powers and Quantum Essence the same toggle or action
+  behavior as vanilla favorites.
 - Adds no plugin records, Papyrus scripts, menu replacement, configuration,
   or save data.
-- Supports Steam Starfield 1.16.244.0 only. Mod-added form types and unrelated
-  Favorites-menu overhauls are not claimed compatible.
+- Supports Steam Starfield 1.16.244.0 only. FME compatibility is pinned to
+  version 5.0.0; mod-added form types and unrelated Favorites-menu overhauls
+  are not claimed compatible.
