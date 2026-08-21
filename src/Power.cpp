@@ -153,7 +153,7 @@ namespace FavoritesToggle::Power
             return true;
         }
 
-        if (!IsSelected(spell, a_player)) {
+        if (!Settings::Powers() || !IsSelected(spell, a_player)) {
             return false;
         }
 

@@ -20,6 +20,13 @@ namespace FavoritesToggle
     [[nodiscard]] bool RegisterMenuBridge(
         const SFSE::MenuInterface* a_menuInterface);
 
+    namespace Settings
+    {
+        void Load();
+        [[nodiscard]] bool Allows(const RE::TESForm* a_form);
+        [[nodiscard]] bool Powers();
+    }
+
     namespace Power
     {
         [[nodiscard]] bool ValidateSelected();

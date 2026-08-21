@@ -17,8 +17,9 @@ Initial release.
   or refusal paths and honors the equip-state-locked inventory flag.
 - Supports vanilla keyboard keys, FME configured hotkeys, mouse menu selection,
   and gamepad menu confirmation.
-- Adds no plugin records, Papyrus scripts, menu replacement, configuration,
-  or save data.
+- Adds default-on INI toggles for weapons, armor, Powers, and other equipped
+  item types.
+- Adds no plugin records, Papyrus scripts, menu replacement, or save data.
 - Supports Steam Starfield 1.16.244.0 only; FME integration is signature-pinned
-  to 5.0.0. Mod-added form types and unrelated Favorites-menu overhauls are not
-  claimed compatible.
+  to 5.0.0. Arbitrary mod-added form behavior and unrelated Favorites-menu
+  overhauls are not claimed compatible.

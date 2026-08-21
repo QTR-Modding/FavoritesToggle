@@ -79,6 +79,9 @@ namespace FavoritesToggle
             if (!equippedObject) {
                 return false;
             }
+            if (!Settings::Allows(equippedObject)) {
+                return false;
+            }
             if (locked) {
                 return true;
             }
