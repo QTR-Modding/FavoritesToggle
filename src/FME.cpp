@@ -9,6 +9,7 @@
 
 #include <array>
 #include <atomic>
+#include <chrono>
 #include <limits>
 #include <string_view>
 
@@ -27,12 +28,15 @@ namespace FavoritesToggle::FME
         constexpr std::ptrdiff_t kUseActionSpellCallOffset = 0x363;
         constexpr std::ptrdiff_t kPowerFeedbackCallOffset = 0x47F;
         constexpr auto kPowerSource = RE::MagicSystem::CastingSource::kOther;
+        constexpr auto kDuplicateActivationWindow = std::chrono::milliseconds{ 200 };
 
         REL::Relocation<UseFavoriteFn> originalUseFavorite;
         REL::Relocation<UseActionSpell> useActionSpell;
         REL::Relocation<PowerFeedback> playPowerFeedback;
         REL::Trampoline trampoline{ "FavoritesMenuExtended" };
         std::atomic_bool enabled{ false };
+        RE::TESBoundObject* lastForm = nullptr;
+        std::chrono::steady_clock::time_point lastActivation;
 
         [[nodiscard]] bool Contains(
             const REX::FModuleSection& a_section,
@@ -142,9 +146,22 @@ namespace FavoritesToggle::FME
             return true;
         }
 
+        [[nodiscard]] bool IsDuplicateActivation(RE::TESBoundObject* a_form) noexcept
+        {
+            const auto now = std::chrono::steady_clock::now();
+            const bool duplicate = a_form == lastForm &&
+                now - lastActivation < kDuplicateActivationWindow;
+            lastForm = a_form;
+            lastActivation = now;
+            return duplicate;
+        }
+
         void UseFavorite(RE::TESBoundObject* a_form) noexcept
         {
             if (enabled.load(std::memory_order_acquire) && a_form) {
+                if (IsDuplicateActivation(a_form)) {
+                    return;
+                }
                 try {
                     if (auto* player = RE::PlayerCharacter::GetSingleton()) {
                         auto* spell = a_form->As<RE::SpellItem>();
@@ -178,7 +195,7 @@ namespace FavoritesToggle::FME
                         menu.SetMember("iLastSelectedQuickKey", selectedIndex);
                     }
                 } catch (...) {
-                    logger::error("Favorites Menu Extended menu callback failed");
+                    logger::error("Favorites Menu Extended input callback failed");
                 }
             }
         };
@@ -198,28 +215,23 @@ namespace FavoritesToggle::FME
 
                 auto* root = a_menu->uiMovie->asMovieRoot.get();
                 Value menu;
-                Value loaderInfo;
-                Value domain;
-                Value manager;
-                if (!root->GetVariable(&menu, a_menu->GetRootPath()) || !menu.IsObject() ||
-                    !menu.GetMember("loaderInfo", &loaderInfo) || !loaderInfo.IsObject() ||
-                    !loaderInfo.GetMember("applicationDomain", &domain) || !domain.IsObject()) {
-                    return;
-                }
-
-                Value className;
-                root->CreateString(&className, "Shared.AS3.Data::BSUIDataManager");
-                if (!domain.Invoke("getDefinition", &manager, &className, 1) || !manager.IsObject()) {
+                if (!root->GetVariable(&menu, "root1.Menu_mc") || !menu.IsObject()) {
                     return;
                 }
 
                 Value callback;
-                Value eventName;
                 root->CreateFunction(&callback, listener);
-                root->CreateString(&eventName, "FavoritesMenu_UseQuickkey");
-                Value args[2]{ eventName, callback };
-                if (!manager.Invoke("addEventListener", nullptr, args, 2)) {
-                    logger::warn("Favorites Menu Extended input bridge was not registered");
+                Value mouseEvent;
+                Value keyEvent;
+                root->CreateString(&mouseEvent, "FavoritesEntry::mouse_click");
+                root->CreateString(&keyEvent, "keyUp");
+                const Value useCapture{ false };
+                const Value priority{ std::int32_t{ 100 } };
+                Value mouseArgs[4]{ mouseEvent, callback, useCapture, priority };
+                Value keyArgs[4]{ keyEvent, callback, useCapture, priority };
+                if (!menu.Invoke("addEventListener", nullptr, mouseArgs, 4) ||
+                    !menu.Invoke("addEventListener", nullptr, keyArgs, 4)) {
+                    logger::error("Favorites Menu Extended input bridge was not registered");
                 }
             } catch (...) {
                 logger::error("Favorites Menu Extended menu setup failed");
