@@ -4,17 +4,12 @@
 
 Initial release.
 
-- Enables Bethesda's existing exact-inventory-instance unequip branch for the
-  12 vanilla favorite slots.
-- Supports guns, melee weapons, grenades and mines, spacesuits, helmets, packs,
-  and apparel that Starfield marks equipped.
-- Lets an already selected Power reach Bethesda's downstream native unequip
-  path.
-- Leaves Aid and other non-equipped consumables on their original repeated-use
-  or refusal paths and honors the equip-state-locked inventory flag.
-- Supports vanilla keyboard keys, mouse menu selection, and gamepad menu
-  confirmation.
+- Toggles equipped inventory favorites and the selected Power from vanilla or
+  Favorites Menu Extended 5.0 slots.
+- Supports keyboard hotkeys, keyboard confirmation, mouse selection, and
+  gamepad confirmation.
 - Adds default-on INI toggles for weapons, armor, and Powers.
+- Preserves consumables, Quantum Essence, equip-state-locked entries, and
+  unsupported form types.
 - Adds no plugin records, Papyrus scripts, menu replacement, or save data.
-- Supports Steam Starfield 1.16.244.0 only. Mod-added form types and unrelated
-  Favorites-menu overhauls are not claimed compatible.
+- Supports Steam Starfield 1.16.244.0; FME compatibility is pinned to 5.0.0.

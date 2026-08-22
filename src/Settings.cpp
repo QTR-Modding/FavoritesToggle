@@ -1,10 +1,9 @@
 // Copyright (C) 2026 Quantumyilmaz
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "Internal.h"
+#include "Hooks.h"
 
-#include <REX/FIniSettingStore.h>
-#include <REX/TIniSetting.h>
+#include <REX/REX.h>
 
 namespace FavoritesToggle::Settings
 {
@@ -24,13 +23,9 @@ namespace FavoritesToggle::Settings
         store->Load();
     }
 
-    bool Allows(const RE::TESForm* a_form)
+    bool Allows(const RE::TESForm& a_form)
     {
-        if (!a_form) {
-            return false;
-        }
-
-        switch (a_form->GetFormType()) {
+        switch (a_form.GetFormType()) {
         case RE::FormType::kWEAP:
             return weapons.GetValue();
         case RE::FormType::kARMO:

@@ -17,8 +17,7 @@ if is_plat("windows") then
     })
 end
 
-local commonlibsf = os.getenv("COMMONLIBSF_PATH") or "lib/commonlibsf"
-includes(commonlibsf)
+includes("lib/commonlibsf")
 
 set_project("FavoritesToggle")
 set_version("0.1.0")
@@ -42,7 +41,14 @@ target("FavoritesToggle")
         }
     })
 
-    add_files("src/**.cpp")
+    add_files(
+        "src/plugin.cpp",
+        "src/Settings.cpp",
+        "src/Vanilla.cpp",
+        "src/FME.cpp")
+    add_headerfiles("include/PCH.h", "include/Hooks.h")
+    add_includedirs("include")
+    set_pcxxheader("include/PCH.h")
     add_installfiles("config/FavoritesToggle.ini", {
         prefixdir = "SFSE/Plugins"
     })

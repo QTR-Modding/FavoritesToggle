@@ -8,6 +8,8 @@ keep their normal use behavior, and Quantum Essence keeps its native action.
 ## Features
 
 - Supports all 12 vanilla favorite slots.
+- Supports the additional slots and configured hotkeys from Favorites Menu
+  Extended 5.0 when that mod is installed.
 - Works with favorite hotkeys, keyboard confirmation, mouse selection, and
   gamepad confirmation.
 - Toggles inventory entries that Starfield marks equipped, including weapons,
@@ -25,6 +27,7 @@ keep their normal use behavior, and Quantum Essence keeps its native action.
 - SFSE 0.2.21
 - Address Library for SFSE Plugins v22
 - Microsoft Visual C++ 2015-2022 Redistributable (x64)
+- Optional: Favorites Menu Extended 5.0.0 for its additional slots
 
 ## Installation
 
@@ -52,6 +55,10 @@ Unrecognized form types keep their original behavior.
 Favorites Toggle is runtime- and signature-pinned to Starfield 1.16.244.0.
 Unsupported hooks fail closed and are reported in the SFSE log.
 
+Vanilla support is installed first and remains independent. The optional
+Favorites Menu Extended adapter is version- and signature-checked separately;
+if it is absent or incompatible, vanilla favorites continue to work.
+
 The plugin replaces no `favoritesmenu.swf`, so it creates no direct menu-file
 conflict. Plugins that patch the same native Favorites routines or menu mods
 that change Favorites event data may conflict.
@@ -73,8 +80,6 @@ The DLL is written to:
 ```text
 build/windows/x64/release/FavoritesToggle.dll
 ```
-
-Set `COMMONLIBSF_PATH` to use another CommonLibSF checkout.
 
 ## License and source
 

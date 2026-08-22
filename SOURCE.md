@@ -3,10 +3,10 @@
 The distributed `FavoritesToggle.dll` statically incorporates code from these
 exact revisions:
 
-- [CommonLibSF](https://github.com/libxse/commonlibsf) commit
-  `84f8589b15a6d588d28da16baa7459a1fc414ea7`
+- [QTR CommonLibSF](https://github.com/QTR-Modding/commonlibsf) commit
+  `40402bbd922c76564aa22c143d53587e99fde40f`
 - [commonlib-shared](https://github.com/libxse/commonlib-shared) commit
-  `40bdbcaf8fa691ee6daadc7b5cea8d43f794bef4`
+  `5470284e964d5510aa001dca3e0bb5548b6356a4`
 - [spdlog](https://github.com/gabime/spdlog) v1.16.0, commit
   `486b55554f11c9cccc913e11a87085b2a91f706f`
 - [SimpleIni](https://github.com/brofield/simpleini) v4.25, commit
