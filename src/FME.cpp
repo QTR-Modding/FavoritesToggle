@@ -9,7 +9,6 @@
 
 #include <array>
 #include <atomic>
-#include <chrono>
 #include <limits>
 #include <string_view>
 
@@ -28,15 +27,15 @@ namespace FavoritesToggle::FME
         constexpr std::ptrdiff_t kUseActionSpellCallOffset = 0x363;
         constexpr std::ptrdiff_t kPowerFeedbackCallOffset = 0x47F;
         constexpr auto kPowerSource = RE::MagicSystem::CastingSource::kOther;
-        constexpr auto kDuplicateActivationWindow = std::chrono::milliseconds{ 200 };
+        constexpr std::uint32_t kConfirmKeyCode = 13;
 
         REL::Relocation<UseFavoriteFn> originalUseFavorite;
         REL::Relocation<UseActionSpell> useActionSpell;
         REL::Relocation<PowerFeedback> playPowerFeedback;
         REL::Trampoline trampoline{ "FavoritesMenuExtended" };
         std::atomic_bool enabled{ false };
-        RE::TESBoundObject* lastForm = nullptr;
-        std::chrono::steady_clock::time_point lastActivation;
+        std::atomic_uint64_t activationGeneration{ 0 };
+        std::atomic_uint64_t consumedGeneration{ 0 };
 
         [[nodiscard]] bool Contains(
             const REX::FModuleSection& a_section,
@@ -146,20 +145,26 @@ namespace FavoritesToggle::FME
             return true;
         }
 
-        [[nodiscard]] bool IsDuplicateActivation(RE::TESBoundObject* a_form) noexcept
+        void BeginMenuActivation() noexcept
         {
-            const auto now = std::chrono::steady_clock::now();
-            const bool duplicate = a_form == lastForm &&
-                now - lastActivation < kDuplicateActivationWindow;
-            lastForm = a_form;
-            lastActivation = now;
-            return duplicate;
+            activationGeneration.fetch_add(1, std::memory_order_release);
+        }
+
+        [[nodiscard]] bool IsRepeatedMenuActivation() noexcept
+        {
+            const auto generation = activationGeneration.load(std::memory_order_acquire);
+            const auto* ui = RE::UI::GetSingleton();
+            if (!generation || !ui || !ui->IsMenuOpen(RE::BSFixedString{ "FavoritesMenu" })) {
+                return false;
+            }
+
+            return consumedGeneration.exchange(generation, std::memory_order_acq_rel) == generation;
         }
 
         void UseFavorite(RE::TESBoundObject* a_form) noexcept
         {
             if (enabled.load(std::memory_order_acquire) && a_form) {
-                if (IsDuplicateActivation(a_form)) {
+                if (IsRepeatedMenuActivation()) {
                     return;
                 }
                 try {
@@ -180,9 +185,17 @@ namespace FavoritesToggle::FME
         class FavoritesUseListener final : public RE::Scaleform::GFx::FunctionHandler
         {
         public:
+            explicit FavoritesUseListener(bool a_confirmOnly) :
+                confirmOnly(a_confirmOnly)
+            {}
+
             void Call(const Params& a_params) override
             {
                 try {
+                    if (confirmOnly && !IsConfirmEvent(a_params)) {
+                        return;
+                    }
+
                     auto* root = a_params.movie ? a_params.movie->asMovieRoot.get() : nullptr;
                     if (!root) {
                         return;
@@ -193,16 +206,36 @@ namespace FavoritesToggle::FME
                     if (root->GetVariable(&menu, "root1.Menu_mc") && menu.IsObject() &&
                         menu.GetMember("selectedIndex", &selectedIndex)) {
                         menu.SetMember("iLastSelectedQuickKey", selectedIndex);
+                        BeginMenuActivation();
                     }
                 } catch (...) {
                     logger::error("Favorites Menu Extended input callback failed");
                 }
             }
+
+        private:
+            [[nodiscard]] static bool IsConfirmEvent(const Params& a_params)
+            {
+                if (!a_params.args || !a_params.argCount || !a_params.args[0].IsObject()) {
+                    return false;
+                }
+
+                Value keyCode;
+                if (!a_params.args[0].GetMember("keyCode", &keyCode)) {
+                    return false;
+                }
+                return keyCode.IsUInt() ? keyCode.GetUInt() == kConfirmKeyCode :
+                    keyCode.IsInt() ? keyCode.GetInt() == kConfirmKeyCode :
+                    keyCode.IsNumber() && keyCode.GetNumber() == kConfirmKeyCode;
+            }
+
+            bool confirmOnly;
         };
 
         // Scaleform owns references to the function. Retain the native handler
         // for the process lifetime.
-        auto* const listener = new FavoritesUseListener{};
+        auto* const mouseListener = new FavoritesUseListener{ false };
+        auto* const keyListener = new FavoritesUseListener{ true };
 
         void OnMenuMovieCreated(RE::IMenu* a_menu) noexcept
         {
@@ -214,21 +247,25 @@ namespace FavoritesToggle::FME
                 }
 
                 auto* root = a_menu->uiMovie->asMovieRoot.get();
+                activationGeneration.store(0, std::memory_order_release);
+                consumedGeneration.store(0, std::memory_order_release);
                 Value menu;
                 if (!root->GetVariable(&menu, "root1.Menu_mc") || !menu.IsObject()) {
                     return;
                 }
 
-                Value callback;
-                root->CreateFunction(&callback, listener);
+                Value mouseCallback;
+                Value keyCallback;
+                root->CreateFunction(&mouseCallback, mouseListener);
+                root->CreateFunction(&keyCallback, keyListener);
                 Value mouseEvent;
                 Value keyEvent;
                 root->CreateString(&mouseEvent, "FavoritesEntry::mouse_click");
                 root->CreateString(&keyEvent, "keyUp");
                 const Value useCapture{ false };
                 const Value priority{ std::int32_t{ 100 } };
-                Value mouseArgs[4]{ mouseEvent, callback, useCapture, priority };
-                Value keyArgs[4]{ keyEvent, callback, useCapture, priority };
+                Value mouseArgs[4]{ mouseEvent, mouseCallback, useCapture, priority };
+                Value keyArgs[4]{ keyEvent, keyCallback, useCapture, priority };
                 if (!menu.Invoke("addEventListener", nullptr, mouseArgs, 4) ||
                     !menu.Invoke("addEventListener", nullptr, keyArgs, 4)) {
                     logger::error("Favorites Menu Extended input bridge was not registered");
