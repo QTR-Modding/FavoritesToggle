@@ -4,7 +4,7 @@ The distributed `FavoritesToggle.dll` statically incorporates code from these
 exact revisions:
 
 - [QTR CommonLibSF](https://github.com/QTR-Modding/commonlibsf) commit
-  `40402bbd922c76564aa22c143d53587e99fde40f`
+  `515fa771a8c17a113525b72f523317688357f819`
 - [commonlib-shared](https://github.com/libxse/commonlib-shared) commit
   `5470284e964d5510aa001dca3e0bb5548b6356a4`
 - [spdlog](https://github.com/gabime/spdlog) v1.16.0, commit

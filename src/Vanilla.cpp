@@ -41,7 +41,7 @@ namespace FavoritesToggle::Vanilla
             RE::ActorEquipManager* a_equipManager,
             RE::Actor* a_actor,
             const RE::InventoryInterface::Handle* a_handle,
-            std::uint8_t a_result,
+            std::uint8_t a_unk3,
             bool a_allowUnequip,
             bool a_unk5,
             bool a_unk6) noexcept
@@ -58,7 +58,7 @@ namespace FavoritesToggle::Vanilla
                 a_equipManager,
                 a_actor,
                 a_handle,
-                a_result,
+                a_unk3,
                 a_allowUnequip,
                 a_unk5,
                 a_unk6);
