@@ -5,7 +5,7 @@ The release DLL statically incorporates the following software:
 ## CommonLibSF
 
 - Project: <https://github.com/QTR-Modding/commonlibsf>
-- Revision: `515fa771a8c17a113525b72f523317688357f819`
+- Revision: `f672881879ca007bbca0d5b5476d2734676e1a6a`
 - License: GPL-3.0-or-later with the CommonLibSF Modding Exception and GPL-3.0
   Linking Exception (with Corresponding Source)
 - License files: `COPYING` and `EXCEPTIONS`
