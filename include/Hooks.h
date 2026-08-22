@@ -7,3 +7,8 @@ namespace FavoritesToggle::Vanilla
 {
     [[nodiscard]] bool Install();
 }
+
+namespace FavoritesToggle::FME
+{
+    [[nodiscard]] bool Install();
+}

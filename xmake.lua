@@ -40,7 +40,7 @@ target("FavoritesToggle")
         }
     })
 
-    add_files("src/plugin.cpp", "src/Vanilla.cpp")
+    add_files("src/plugin.cpp", "src/Vanilla.cpp", "src/FME.cpp")
     add_headerfiles("include/PCH.h", "include/Hooks.h")
     add_includedirs("include")
     set_pcxxheader("include/PCH.h")
