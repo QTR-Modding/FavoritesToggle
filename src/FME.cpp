@@ -173,8 +173,11 @@ namespace FavoritesToggle::FME
 
                     Value menu;
                     Value selectedIndex;
+                    Value overEntry;
                     if (root->GetVariable(&menu, "root1.Menu_mc") && menu.IsObject() &&
-                        menu.GetMember("selectedIndex", &selectedIndex)) {
+                        menu.GetMember("selectedIndex", &selectedIndex) &&
+                        menu.GetMember("OverEntry", &overEntry) && overEntry.IsBoolean() &&
+                        !overEntry.GetBoolean()) {
                         menu.SetMember("iLastSelectedQuickKey", selectedIndex);
                     }
                 } catch (...) {
