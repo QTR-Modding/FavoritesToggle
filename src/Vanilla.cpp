@@ -1,5 +1,4 @@
 #include "Hooks.h"
-
 #include "REL/ASM.h"
 #include "REL/Pattern.h"
 
@@ -61,11 +60,11 @@ namespace FavoritesToggle::Vanilla
 		const REL::Relocation<UseInventoryItem> useInventoryItem{
 			RE::ID::ActorEquipManager::UseInventoryItem
 		};
-		REL::Relocation<std::uintptr_t> inventoryCall{
+		REL::Relocation inventoryCall{
 			RE::ID::FavoritesManager::UseQuickkey,
 			kInventoryCallOffset
 		};
-		REL::Relocation<std::uintptr_t> spellCall{
+		REL::Relocation spellCall{
 			RE::ID::FavoritesManager::UseQuickkey,
 			kSpellStateCallOffset
 		};
@@ -92,7 +91,7 @@ namespace FavoritesToggle::Vanilla
 			return false;
 		}
 
-		auto&      trampoline = REL::GetTrampoline();
+		auto& trampoline = REL::GetTrampoline();
 		const auto inventoryRelay = trampoline.allocate_branch5(
 			reinterpret_cast<std::uintptr_t>(&UseInventoryItemHook));
 		const auto spellRelay = trampoline.allocate_branch5(

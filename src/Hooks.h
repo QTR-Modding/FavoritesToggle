@@ -1,10 +1,5 @@
 #pragma once
 
-namespace RE
-{
-	class TESForm;
-}
-
 namespace FavoritesToggle::Settings
 {
 	void               Load();

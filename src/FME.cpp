@@ -1,15 +1,10 @@
-#include "Hooks.h"
+#include <utility>
 
+#include "Hooks.h"
 #include "REL/ASM.h"
 #include "REL/Pattern.h"
 #include "REL/Trampoline.h"
 #include "REX/FModule.h"
-
-#include <array>
-#include <atomic>
-#include <exception>
-#include <limits>
-#include <string_view>
 
 namespace FavoritesToggle::FME
 {
@@ -32,8 +27,8 @@ namespace FavoritesToggle::FME
 
 		[[nodiscard]] bool Contains(
 			const REX::FModuleSection& a_section,
-			std::uintptr_t             a_address,
-			std::size_t                a_size) noexcept
+			const std::uintptr_t a_address,
+			const std::size_t a_size) noexcept
 		{
 			const auto begin = a_section.GetAddress();
 			if (!begin || a_address < begin) {
@@ -44,7 +39,7 @@ namespace FavoritesToggle::FME
 			return offset <= a_section.GetSize() && a_size <= a_section.GetSize() - offset;
 		}
 
-		[[nodiscard]] bool CanReachCall5(std::uintptr_t a_callsite, std::uintptr_t a_target) noexcept
+		[[nodiscard]] bool CanReachCall5(const std::uintptr_t a_callsite, const std::uintptr_t a_target) noexcept
 		{
 			constexpr auto callSize = sizeof(REL::ASM::CALL5);
 			if (a_callsite > std::numeric_limits<std::uintptr_t>::max() - callSize) {
@@ -66,7 +61,7 @@ namespace FavoritesToggle::FME
 		{
 			static RE::SpellItem* spell = nullptr;
 			if (!spell) {
-				const auto* defaultObject =
+				const auto defaultObject =
 					RE::TESForm::LookupByEditorID<RE::BGSDefaultObject>("QuantumEssenceSpell_DO");
 				if (defaultObject && defaultObject->object) {
 					spell = defaultObject->object->As<RE::SpellItem>();
@@ -98,7 +93,7 @@ namespace FavoritesToggle::FME
 				return true;
 			}
 
-			auto* equipManager = RE::ActorEquipManager::GetSingleton();
+			auto equipManager = RE::ActorEquipManager::GetSingleton();
 			if (!equipManager) {
 				return false;
 			}
@@ -132,7 +127,7 @@ namespace FavoritesToggle::FME
 		[[nodiscard]] bool IsRepeatedMenuActivation() noexcept
 		{
 			const auto  generation = activationGeneration.load(std::memory_order_acquire);
-			const auto* ui = RE::UI::GetSingleton();
+			const auto ui = RE::UI::GetSingleton();
 			if (!generation || !ui || !ui->IsMenuOpen(RE::BSFixedString{ "FavoritesMenu" })) {
 				return false;
 			}
@@ -146,8 +141,8 @@ namespace FavoritesToggle::FME
 				if (IsRepeatedMenuActivation()) {
 					return;
 				}
-				if (auto* player = RE::PlayerCharacter::GetSingleton()) {
-					auto* spell = a_form->As<RE::SpellItem>();
+				if (auto player = RE::PlayerCharacter::GetSingleton()) {
+					auto spell = a_form->As<RE::SpellItem>();
 					if (spell) {
 						if (Settings::Powers() && TryHandlePower(*spell, *player)) {
 							return;
@@ -163,7 +158,7 @@ namespace FavoritesToggle::FME
 		class FavoritesUseListener final : public RE::Scaleform::GFx::FunctionHandler
 		{
 		public:
-			explicit FavoritesUseListener(bool a_confirmOnly) :
+			explicit FavoritesUseListener(const bool a_confirmOnly) :
 				confirmOnly_(a_confirmOnly)
 			{}
 
@@ -173,7 +168,7 @@ namespace FavoritesToggle::FME
 					return;
 				}
 
-				auto* root = a_params.movie ? a_params.movie->asMovieRoot.get() : nullptr;
+				auto root = a_params.movie ? a_params.movie->asMovieRoot.get() : nullptr;
 				if (!root) {
 					return;
 				}
@@ -202,7 +197,7 @@ namespace FavoritesToggle::FME
 					return keyCode.GetUInt() == kConfirmKeyCode;
 				}
 				if (keyCode.IsInt()) {
-					return keyCode.GetInt() == kConfirmKeyCode;
+					return std::cmp_equal(keyCode.GetInt(), kConfirmKeyCode);
 				}
 				return keyCode.IsNumber() && keyCode.GetNumber() == kConfirmKeyCode;
 			}
@@ -213,13 +208,13 @@ namespace FavoritesToggle::FME
 		void OnMenuMovieCreated(RE::IMenu* a_menu) noexcept
 		{
 			try {
-				const auto* name = a_menu ? a_menu->GetName() : nullptr;
+				const auto name = a_menu ? a_menu->GetName() : nullptr;
 				if (!name || std::string_view{ name } != "FavoritesMenu" || !a_menu->uiMovie ||
 					!a_menu->uiMovie->asMovieRoot) {
 					return;
 				}
 
-				auto* root = a_menu->uiMovie->asMovieRoot.get();
+				auto root = a_menu->uiMovie->asMovieRoot.get();
 				activationGeneration.store(0, std::memory_order_release);
 				consumedGeneration.store(0, std::memory_order_release);
 				Value menu;
@@ -266,7 +261,7 @@ namespace FavoritesToggle::FME
 			logger::error("Favorites Menu Extended compatibility requires version 5.0.0");
 			return false;
 		}
-		const auto* menuInterface = SFSE::GetMenuInterface();
+		const auto menuInterface = SFSE::GetMenuInterface();
 		if (!menuInterface) {
 			logger::error("SFSE menu interface is unavailable");
 			return false;

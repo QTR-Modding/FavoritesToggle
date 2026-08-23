@@ -1,11 +1,9 @@
 #include "Hooks.h"
 
-#include "REL/ASM.h"
-
-#include <exception>
-
 namespace FavoritesToggle
 {
+	// ReSharper disable once CppParameterMayBeConstPtrOrRef
+	// ReSharper disable once CppUseInternalLinkage
 	void OnPostLoad(SFSE::MessagingInterface::Message* a_message) noexcept
 	{
 		if (!a_message || a_message->type != SFSE::MessagingInterface::kPostLoad) {

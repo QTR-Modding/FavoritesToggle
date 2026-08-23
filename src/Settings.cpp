@@ -1,14 +1,13 @@
 #include "Hooks.h"
-
 #include "REX/REX.h"
 
 namespace FavoritesToggle::Settings
 {
 	namespace
 	{
-		REX::TIniSetting<bool> weapons{ "Toggle", "Weapons", true };
-		REX::TIniSetting<bool> armor{ "Toggle", "Armor", true };
-		REX::TIniSetting<bool> powers{ "Toggle", "Powers", true };
+		REX::TIniSetting weapons{ "Toggle", "Weapons", true };
+		REX::TIniSetting armor{ "Toggle", "Armor", true };
+		REX::TIniSetting powers{ "Toggle", "Powers", true };
 	}
 
 	void Load()
