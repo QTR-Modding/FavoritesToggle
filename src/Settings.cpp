@@ -1,5 +1,4 @@
 #include "Hooks.h"
-#include "REX/REX.h"
 
 namespace FavoritesToggle::Settings
 {

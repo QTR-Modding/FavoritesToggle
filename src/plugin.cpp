@@ -2,29 +2,31 @@
 
 namespace FavoritesToggle
 {
-	// ReSharper disable once CppParameterMayBeConstPtrOrRef
-	// ReSharper disable once CppUseInternalLinkage
-	void OnPostLoad(SFSE::MessagingInterface::Message* a_message) noexcept
+	namespace
 	{
-		if (!a_message || a_message->type != SFSE::MessagingInterface::kPostLoad) {
-			return;
-		}
-
-		try {
-			if (!Vanilla::Install()) {
+		// ReSharper disable once CppParameterMayBeConstPtrOrRef
+		void OnPostLoad(SFSE::MessagingInterface::Message* a_message) noexcept
+		{
+			if (!a_message || a_message->type != SFSE::MessagingInterface::kPostLoad) {
 				return;
 			}
-		} catch (const std::exception& error) {
-			logger::error("Could not install vanilla favorites hooks: {}", error.what());
-			return;
-		}
 
-		try {
-			if (!FME::Install()) {
-				logger::warn("Favorites Menu Extended compatibility is inactive");
+			try {
+				if (!Vanilla::Install()) {
+					return;
+				}
+			} catch (const std::exception& error) {
+				logger::error("Could not install vanilla favorites hooks: {}", error.what());
+				return;
 			}
-		} catch (const std::exception& error) {
-			logger::warn("Could not install Favorites Menu Extended compatibility: {}", error.what());
+
+			try {
+				if (!FME::Install()) {
+					logger::warn("Favorites Menu Extended compatibility is inactive");
+				}
+			} catch (const std::exception& error) {
+				logger::warn("Could not install Favorites Menu Extended compatibility: {}", error.what());
+			}
 		}
 	}
 }

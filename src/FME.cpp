@@ -1,10 +1,4 @@
-#include <utility>
-
 #include "Hooks.h"
-#include "REL/ASM.h"
-#include "REL/Pattern.h"
-#include "REL/Trampoline.h"
-#include "REX/FModule.h"
 
 namespace FavoritesToggle::FME
 {
@@ -20,7 +14,6 @@ namespace FavoritesToggle::FME
 		constexpr std::uint32_t                 kConfirmKeyCode = 13;
 
 		REL::Relocation<UseFavorite> originalUseFavorite;
-		REL::Trampoline              trampoline{ "FavoritesMenuExtended" };
 		std::atomic_bool             enabled{ false };
 		std::atomic_uint64_t         activationGeneration{ 0 };
 		std::atomic_uint64_t         consumedGeneration{ 0 };
@@ -93,7 +86,7 @@ namespace FavoritesToggle::FME
 				return true;
 			}
 
-			auto equipManager = RE::ActorEquipManager::GetSingleton();
+			const auto equipManager = RE::ActorEquipManager::GetSingleton();
 			if (!equipManager) {
 				return false;
 			}
@@ -141,9 +134,8 @@ namespace FavoritesToggle::FME
 				if (IsRepeatedMenuActivation()) {
 					return;
 				}
-				if (auto player = RE::PlayerCharacter::GetSingleton()) {
-					auto spell = a_form->As<RE::SpellItem>();
-					if (spell) {
+				if (const auto player = RE::PlayerCharacter::GetSingleton()) {
+					if (const auto spell = a_form->As<RE::SpellItem>()) {
 						if (Settings::Powers() && TryHandlePower(*spell, *player)) {
 							return;
 						}
@@ -168,7 +160,7 @@ namespace FavoritesToggle::FME
 					return;
 				}
 
-				auto root = a_params.movie ? a_params.movie->asMovieRoot.get() : nullptr;
+				const auto root = a_params.movie ? a_params.movie->asMovieRoot.get() : nullptr;
 				if (!root) {
 					return;
 				}
@@ -288,6 +280,7 @@ namespace FavoritesToggle::FME
 
 		originalUseFavorite = originalTarget;
 		const auto anchor = base + kCallRvas[kCallRvas.size() / 2];
+		static REL::Trampoline trampoline{ "FavoritesMenuExtended" };
 		trampoline.create(sizeof(REL::ASM::JMP14), reinterpret_cast<void*>(anchor));
 
 		const auto relay =

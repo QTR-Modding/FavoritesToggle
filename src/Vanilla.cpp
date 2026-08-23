@@ -1,6 +1,4 @@
 #include "Hooks.h"
-#include "REL/ASM.h"
-#include "REL/Pattern.h"
 
 namespace FavoritesToggle::Vanilla
 {
