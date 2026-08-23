@@ -18,20 +18,14 @@ namespace FavoritesToggle::FME
     {
         using Value = RE::Scaleform::GFx::Value;
         using UseFavoriteFn = void (*)(RE::TESBoundObject*);
-        using UseActionSpell = void (*)(RE::Actor*, RE::SpellItem*);
-        using PowerFeedback = bool (*)(RE::SpellItem*);
 
         constexpr std::string_view kModuleName = "FavoritesMenuExtended.dll";
         constexpr std::uintptr_t kUseFavoriteRva = 0x25730;
         constexpr std::array<std::uintptr_t, 4> kCallRvas{ 0x28871, 0x28B3D, 0x2B7A9, 0x2BA7D };
-        constexpr std::ptrdiff_t kUseActionSpellCallOffset = 0x363;
-        constexpr std::ptrdiff_t kPowerFeedbackCallOffset = 0x47F;
         constexpr auto kPowerSource = RE::MagicSystem::CastingSource::kOther;
         constexpr std::uint32_t kConfirmKeyCode = 13;
 
         REL::Relocation<UseFavoriteFn> originalUseFavorite;
-        REL::Relocation<UseActionSpell> useActionSpell;
-        REL::Relocation<PowerFeedback> playPowerFeedback;
         REL::Trampoline trampoline{ "FavoritesMenuExtended" };
         std::atomic_bool enabled{ false };
         std::atomic_uint64_t activationGeneration{ 0 };
@@ -74,28 +68,6 @@ namespace FavoritesToggle::FME
             return spell;
         }
 
-        [[nodiscard]] bool ValidatePowerHelpers()
-        {
-            const REL::Relocation<std::uintptr_t> useQuickkey{ RE::ID::FavoritesManager::UseQuickkey };
-            const auto actionCall = useQuickkey.address() + kUseActionSpellCallOffset;
-            const auto feedbackCall = useQuickkey.address() + kPowerFeedbackCallOffset;
-            if (*reinterpret_cast<const std::uint8_t*>(actionCall) != 0xE8 ||
-                *reinterpret_cast<const std::uint8_t*>(feedbackCall) != 0xE8) {
-                return false;
-            }
-
-            const auto action = REL::ASM::CALL5::TARGET(actionCall);
-            const auto feedback = REL::ASM::CALL5::TARGET(feedbackCall);
-            if (!REL::Pattern<"48 85 D2 0F 84 93 00 00 00 48 89 5C 24 08">().match(action) ||
-                !REL::Pattern<"48 89 5C 24 18 55 56 57 48 8B EC 48 83 EC 40">().match(feedback)) {
-                return false;
-            }
-
-            useActionSpell = action;
-            playPowerFeedback = feedback;
-            return true;
-        }
-
         [[nodiscard]] bool TryUnequip(RE::TESBoundObject& a_form, RE::PlayerCharacter& a_player)
         {
             RE::BSTSmartPointer<RE::TBO_InstanceData> instanceData;
@@ -132,8 +104,8 @@ namespace FavoritesToggle::FME
         [[nodiscard]] bool TryHandlePower(RE::SpellItem& a_spell, RE::PlayerCharacter& a_player)
         {
             if (&a_spell == GetQuantumEssence()) {
-                useActionSpell(&a_player, &a_spell);
-                playPowerFeedback(&a_spell);
+                a_player.UseSpell(&a_spell);
+                (void)a_spell.PlayPowerSelectionSound();
                 return true;
             }
             if (a_player.GetEquippedSpell(kPowerSource) != &a_spell) {
@@ -141,7 +113,7 @@ namespace FavoritesToggle::FME
             }
 
             a_player.UnequipSpell(&a_spell, kPowerSource);
-            playPowerFeedback(&a_spell);
+            (void)a_spell.PlayPowerSelectionSound();
             return true;
         }
 
@@ -170,7 +142,13 @@ namespace FavoritesToggle::FME
                 try {
                     if (auto* player = RE::PlayerCharacter::GetSingleton()) {
                         auto* spell = a_form->As<RE::SpellItem>();
-                        if (spell ? TryHandlePower(*spell, *player) : TryUnequip(*a_form, *player)) {
+                        if (spell) {
+                            if (Settings::Powers() &&
+                                TryHandlePower(*spell, *player)) {
+                                return;
+                            }
+                        } else if (Settings::Allows(*a_form) &&
+                            TryUnequip(*a_form, *player)) {
                             return;
                         }
                     }
@@ -294,11 +272,6 @@ namespace FavoritesToggle::FME
             logger::error("SFSE menu interface is unavailable");
             return false;
         }
-        if (!ValidatePowerHelpers()) {
-            logger::error("Favorites Menu Extended Power helper signatures do not match");
-            return false;
-        }
-
         const auto text = module.GetSection(".text");
         const auto originalTarget = base + kUseFavoriteRva;
         if (!Contains(text, originalTarget, 22) ||

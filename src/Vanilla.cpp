@@ -8,14 +8,23 @@ namespace FavoritesToggle::Vanilla
 {
     namespace
     {
-        constexpr std::ptrdiff_t kInventorySignatureOffset = 0x2D5;
-        constexpr std::ptrdiff_t kAllowUnequipOffset = 0x2E3;
+        constexpr std::ptrdiff_t kInventoryCallOffset = 0x2F6;
         constexpr std::ptrdiff_t kSpellStateCallOffset = 0x377;
 
+        using UseInventoryItemFn = bool (*)(
+            RE::ActorEquipManager*,
+            RE::Actor*,
+            const RE::InventoryInterface::Handle*,
+            std::uint8_t,
+            bool,
+            bool,
+            bool);
         using SpellStateHelper = bool (*)(
             void*,
             RE::Actor*,
             RE::SpellItem*);
+
+        REL::Relocation<UseInventoryItemFn> originalUseInventoryItem;
         REL::Relocation<SpellStateHelper> originalSpellState;
 
         [[nodiscard]] bool IsSelectedPower(
@@ -28,13 +37,41 @@ namespace FavoritesToggle::Vanilla
                     RE::MagicSystem::CastingSource::kOther) == a_spell;
         }
 
+        bool UseInventoryItem(
+            RE::ActorEquipManager* a_equipManager,
+            RE::Actor* a_actor,
+            const RE::InventoryInterface::Handle* a_handle,
+            std::uint8_t a_unk3,
+            bool a_allowUnequip,
+            bool a_unk5,
+            bool a_unk6) noexcept
+        {
+            auto* inventory = RE::BGSInventoryInterface::GetSingleton();
+            if (inventory && a_handle) {
+                if (const auto* form =
+                        inventory->GetInventoryObject(a_handle->id)) {
+                    a_allowUnequip = Settings::Allows(*form);
+                }
+            }
+
+            return originalUseInventoryItem(
+                a_equipManager,
+                a_actor,
+                a_handle,
+                a_unk3,
+                a_allowUnequip,
+                a_unk5,
+                a_unk6);
+        }
+
         bool FilterSpellState(
             void* a_context,
             RE::Actor* a_actor,
             RE::SpellItem* a_spell) noexcept
         {
             try {
-                if (IsSelectedPower(a_spell, a_actor)) {
+                if (Settings::Powers() &&
+                    IsSelectedPower(a_spell, a_actor)) {
                     return false;
                 }
             } catch (...) {
@@ -48,46 +85,26 @@ namespace FavoritesToggle::Vanilla
 
         [[nodiscard]] bool InstallInventoryToggle()
         {
-            const REL::Relocation<std::uintptr_t> useQuickkey{
-                RE::ID::FavoritesManager::UseQuickkey
+            const REL::Relocation<std::uintptr_t> useInventoryItem{
+                RE::ID::ActorEquipManager::UseInventoryItem
             };
-            const auto signature =
-                useQuickkey.address() + kInventorySignatureOffset;
+            REL::Relocation<std::uintptr_t> call{
+                RE::ID::FavoritesManager::UseQuickkey,
+                kInventoryCallOffset
+            };
             if (!REL::Pattern<
-                    "C6 44 24 30 01 C6 44 24 28 00 "
-                    "C6 44 24 20 ?? 4C 8D">().match(signature)) {
-                logger::error(
-                    "Vanilla inventory toggle signature mismatch");
+                    "C6 44 24 30 01 C6 44 24 28 00 C6 44 24 20 00 "
+                    "4C 8D 45 67 48 8B 15 C1 3B 08 04 "
+                    "48 8B 0D CA 2E 32 04 E8 ?? ?? ?? ?? 0F B6 F8">()
+                    .match(call.address() - 33) ||
+                REL::ASM::CALL5::TARGET(call.address()) !=
+                    useInventoryItem.address()) {
+                logger::error("Vanilla inventory hook signature mismatch");
                 return false;
             }
 
-            const auto address =
-                useQuickkey.address() + kAllowUnequipOffset;
-            const auto current =
-                *reinterpret_cast<const std::uint8_t*>(address);
-            if (current == 1) {
-                return true;
-            }
-            if (current != 0) {
-                logger::error(
-                    "Unexpected vanilla allow-unequip value {}",
-                    current);
-                return false;
-            }
-
-            constexpr std::uint8_t enabled = 1;
-            const bool wrote = REL::WriteSafeData(address, enabled);
-            const bool verified = wrote &&
-                *reinterpret_cast<const std::uint8_t*>(address) == enabled;
-            if (!verified) {
-                const bool restored =
-                    REL::WriteSafeData(address, current) &&
-                    *reinterpret_cast<const std::uint8_t*>(address) == current;
-                logger::error(
-                    "Vanilla inventory toggle failed; rollback={}",
-                    restored);
-                return false;
-            }
+            originalUseInventoryItem =
+                call.write_call<5>(&UseInventoryItem);
 
             logger::info("Enabled vanilla inventory favorite toggling");
             return true;

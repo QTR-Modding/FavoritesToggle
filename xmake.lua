@@ -1,4 +1,5 @@
 set_xmakever("3.0.8")
+set_config("commonlib_ini", true)
 
 if is_plat("windows") then
     local project_root = os.projectdir()
@@ -40,8 +41,15 @@ target("FavoritesToggle")
         }
     })
 
-    add_files("src/plugin.cpp", "src/Vanilla.cpp", "src/FME.cpp")
+    add_files(
+        "src/plugin.cpp",
+        "src/Settings.cpp",
+        "src/Vanilla.cpp",
+        "src/FME.cpp")
     add_headerfiles("include/PCH.h", "include/Hooks.h")
     add_includedirs("include")
     set_pcxxheader("include/PCH.h")
+    add_installfiles("config/FavoritesToggle.ini", {
+        prefixdir = "SFSE/Plugins"
+    })
     set_installdir("build/install/Data")

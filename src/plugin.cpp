@@ -37,9 +37,10 @@ SFSE_PLUGIN_LOAD(const SFSE::LoadInterface* a_sfse)
     SFSE::InitInfo initInfo{
         .logPattern = "%Y-%m-%d %H:%M:%S.%e [%l] %v",
         .trampoline = true,
-        .trampolineSize = sizeof(REL::ASM::JMP14)
+        .trampolineSize = 2 * sizeof(REL::ASM::JMP14)
     };
     SFSE::Init(a_sfse, initInfo);
+    FavoritesToggle::Settings::Load();
 
     const auto* messaging = SFSE::GetMessagingInterface();
     if (!messaging) {

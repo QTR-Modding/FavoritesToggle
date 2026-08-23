@@ -14,6 +14,7 @@ keep their normal use behavior, and Quantum Essence keeps its native action.
   gamepad confirmation.
 - Toggles inventory entries that Starfield marks equipped, including weapons,
   throwables, spacesuits, helmets, packs, and apparel.
+- Lets each supported form category be enabled or disabled in an INI file.
 - Lets an already selected Power reach Bethesda's downstream native unequip
   path; selecting a different Power still replaces it normally.
 - Preserves Aid, food, chems, other consumables, Quantum Essence, and
@@ -32,6 +33,22 @@ keep their normal use behavior, and Quantum Essence keeps its native action.
 
 Install the release archive with a mod manager, enable it, and launch Starfield
 through SFSE.
+
+## Configuration
+
+`Data/SFSE/Plugins/FavoritesToggle.ini` provides three default-on settings:
+
+```ini
+[Toggle]
+Weapons=true
+Armor=true
+Powers=true
+```
+
+Set a value to `false` and restart the game to keep that category's original
+repeat-selection behavior. An optional `FavoritesToggleCustom.ini` in the same
+folder overrides the shipped values without replacing the default file.
+Unrecognized form types keep their original behavior.
 
 ## Compatibility
 
