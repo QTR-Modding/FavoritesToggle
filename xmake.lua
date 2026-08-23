@@ -22,7 +22,7 @@ local commonlibsf = path.join(os.projectdir(), "lib", "commonlibsf")
 includes(commonlibsf)
 
 local plugin_name = "FavoritesToggle"
-local plugin_version = "0.1.0"
+local plugin_version = "1.0.0"
 local plugin_author = "Quantumyilmaz"
 
 set_project(plugin_name)
