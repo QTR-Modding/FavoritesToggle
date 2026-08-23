@@ -1,57 +1,72 @@
-// Copyright (C) 2026 Quantumyilmaz
-// SPDX-License-Identifier: GPL-3.0-or-later
-
-#include "PCH.h"
 #include "Hooks.h"
+
+#include "REL/ASM.h"
+
+#include <exception>
 
 namespace FavoritesToggle
 {
-    void OnPostLoad(SFSE::MessagingInterface::Message* a_message) noexcept
-    {
-        if (!a_message || a_message->type != SFSE::MessagingInterface::kPostLoad) {
-            return;
-        }
+	void OnPostLoad(SFSE::MessagingInterface::Message* a_message) noexcept
+	{
+		if (!a_message || a_message->type != SFSE::MessagingInterface::kPostLoad) {
+			return;
+		}
 
-        try {
-            if (!Vanilla::Install()) {
-                logger::error("Favorites Toggle is inactive");
-                return;
-            }
-        } catch (...) {
-            logger::error("Favorites Toggle installation failed");
-            return;
-        }
+		try {
+			if (!Vanilla::Install()) {
+				return;
+			}
+		} catch (const std::exception& error) {
+			logger::error("Could not install vanilla favorites hooks: {}", error.what());
+			return;
+		}
 
-        try {
-            if (!FME::Install()) {
-                logger::warn("Favorites Menu Extended compatibility is inactive");
-            }
-        } catch (...) {
-            logger::warn("Favorites Menu Extended compatibility failed to install");
-        }
-    }
+		try {
+			if (!FME::Install()) {
+				logger::warn("Favorites Menu Extended compatibility is inactive");
+			}
+		} catch (const std::exception& error) {
+			logger::warn("Could not install Favorites Menu Extended compatibility: {}", error.what());
+		}
+	}
 }
 
 SFSE_PLUGIN_LOAD(const SFSE::LoadInterface* a_sfse)
 {
-    SFSE::InitInfo initInfo{
-        .logPattern = "%Y-%m-%d %H:%M:%S.%e [%l] %v",
-        .trampoline = true,
-        .trampolineSize = 2 * sizeof(REL::ASM::JMP14)
-    };
-    SFSE::Init(a_sfse, initInfo);
-    FavoritesToggle::Settings::Load();
+	if (!a_sfse) {
+		return false;
+	}
 
-    const auto* messaging = SFSE::GetMessagingInterface();
-    if (!messaging) {
-        logger::error("SFSE messaging interface is unavailable");
-        return false;
-    }
-    if (!messaging->RegisterListener(FavoritesToggle::OnPostLoad)) {
-        logger::error("Could not register the SFSE message listener");
-        return false;
-    }
+	constexpr SFSE::InitInfo initInfo{
+		.logPattern = "%Y-%m-%d %H:%M:%S.%e [%l] %v",
+		.trampoline = true,
+		.trampolineSize = 2 * sizeof(REL::ASM::JMP14)
+	};
+	SFSE::Init(a_sfse, initInfo);
 
-    logger::info("Loaded for Starfield {}", a_sfse->RuntimeVersion().string("."));
-    return true;
+	const auto runtime = a_sfse->RuntimeVersion();
+	logger::info(
+		"{} {} loaded; runtime={}, SFSE=0x{:08X}",
+		SFSE::GetPluginName(),
+		SFSE::GetPluginVersion(),
+		runtime,
+		a_sfse->SFSEVersion());
+	if (runtime != SFSE::RUNTIME_SF_1_16_244) {
+		logger::error("Unsupported runtime {}; expected {}", runtime, SFSE::RUNTIME_SF_1_16_244);
+		return false;
+	}
+
+	FavoritesToggle::Settings::Load();
+
+	const auto messaging = SFSE::GetMessagingInterface();
+	if (!messaging) {
+		logger::error("Required SFSE MessagingInterface is unavailable");
+		return false;
+	}
+	if (!messaging->RegisterListener(FavoritesToggle::OnPostLoad)) {
+		logger::error("Could not register the SFSE message listener");
+		return false;
+	}
+
+	return true;
 }

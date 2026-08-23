@@ -1,4 +1,5 @@
-set_xmakever("3.0.8")
+set_xmakever("3.0.9")
+set_policy("package.requires_lock", true)
 set_config("commonlib_ini", true)
 
 if is_plat("windows") then
@@ -17,10 +18,15 @@ if is_plat("windows") then
     })
 end
 
-includes("lib/commonlibsf")
+local commonlibsf = path.join(os.projectdir(), "lib", "commonlibsf")
+includes(commonlibsf)
 
-set_project("FavoritesToggle")
-set_version("0.1.0")
+local plugin_name = "FavoritesToggle"
+local plugin_version = "0.1.0"
+local plugin_author = "Quantumyilmaz"
+
+set_project(plugin_name)
+set_version(plugin_version)
 set_license("GPL-3.0-or-later")
 set_languages("c++23")
 set_warnings("allextra")
@@ -28,13 +34,14 @@ set_warnings("allextra")
 add_rules("mode.debug", "mode.releasedbg", "mode.release")
 add_rules("plugin.vsxmake.autoupdate")
 
-target("FavoritesToggle")
+target(plugin_name)
+    set_pcxxheader("src/PCH.h")
     add_defines("_SILENCE_CXX23_ALIGNED_STORAGE_DEPRECATION_WARNING")
     add_rules("commonlibsf.plugin", {
-        name = "FavoritesToggle",
-        author = "Quantumyilmaz",
-        description = "Toggles equipped Starfield favorites from keyboard, mouse, or gamepad",
+        name = plugin_name,
+        author = plugin_author,
         options = {
+            sig_scanning = false,
             address_library = true,
             no_struct_use = false,
             layout_dependent = true
@@ -45,10 +52,10 @@ target("FavoritesToggle")
         "src/plugin.cpp",
         "src/Settings.cpp",
         "src/Vanilla.cpp",
-        "src/FME.cpp")
-    add_headerfiles("include/PCH.h", "include/Hooks.h")
-    add_includedirs("include")
-    set_pcxxheader("include/PCH.h")
+        "src/FME.cpp"
+    )
+    add_headerfiles("src/PCH.h", "src/Hooks.h")
+    add_includedirs("src")
     add_installfiles("config/FavoritesToggle.ini", {
         prefixdir = "SFSE/Plugins"
     })

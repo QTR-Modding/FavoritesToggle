@@ -1,42 +1,27 @@
 # Favorites Toggle
 
-Favorites Toggle turns a repeated favorite selection into an off action when
-the selected item has one. Equipped inventory items are unequipped by exact
-instance, and the currently selected Starborn Power is cleared. Consumables
-keep their normal use behavior, and Quantum Essence keeps its native action.
+Select an equipped favorite again to unequip it. Weapons, armor, and the
+selected Starborn Power can be toggled independently. Consumables and Quantum
+Essence retain their normal behavior.
 
-## Features
-
-- Supports all 12 vanilla favorite slots.
-- Supports the additional slots and configured hotkeys from Favorites Menu
-  Extended 5.0 when that mod is installed.
-- Works with favorite hotkeys, keyboard confirmation, mouse selection, and
-  gamepad confirmation.
-- Toggles inventory entries that Starfield marks equipped, including weapons,
-  throwables, spacesuits, helmets, packs, and apparel.
-- Lets each supported form category be enabled or disabled in an INI file.
-- Lets an already selected Power reach Bethesda's downstream native unequip
-  path; selecting a different Power still replaces it normally.
-- Preserves Aid, food, chems, other consumables, Quantum Essence, and
-  equip-state-locked inventory entries.
-- Ships no plugin records, Papyrus scripts, menu files, or save data.
+Favorites Toggle supports all 12 vanilla slots and Favorites Menu Extended
+5.0, including keyboard, mouse, and gamepad input.
 
 ## Requirements
 
-- Steam Starfield 1.16.244.0
+- Steam Starfield 1.16.244
 - SFSE 0.2.21
 - Address Library for SFSE Plugins v22
-- Microsoft Visual C++ 2015-2022 Redistributable (x64)
-- Optional: Favorites Menu Extended 5.0.0 for its additional slots
+- Optional: Favorites Menu Extended 5.0.0
 
 ## Installation
 
-Install the release archive with a mod manager, enable it, and launch Starfield
-through SFSE.
+Install the release archive with a mod manager and launch Starfield through
+SFSE.
 
 ## Configuration
 
-`Data/SFSE/Plugins/FavoritesToggle.ini` provides three default-on settings:
+`Data/SFSE/Plugins/FavoritesToggle.ini` contains three default-on settings:
 
 ```ini
 [Toggle]
@@ -45,45 +30,19 @@ Armor=true
 Powers=true
 ```
 
-Set a value to `false` and restart the game to keep that category's original
-repeat-selection behavior. An optional `FavoritesToggleCustom.ini` in the same
-folder overrides the shipped values without replacing the default file.
-Unrecognized form types keep their original behavior.
-
-## Compatibility
-
-Favorites Toggle is runtime- and signature-pinned to Starfield 1.16.244.0.
-Unsupported hooks fail closed and are reported in the SFSE log.
-
-Vanilla support is installed first and remains independent. The optional
-Favorites Menu Extended adapter is version- and signature-checked separately;
-if it is absent or incompatible, vanilla favorites continue to work.
-
-The plugin replaces no `favoritesmenu.swf`, so it creates no direct menu-file
-conflict. Plugins that patch the same native Favorites routines or menu mods
-that change Favorites event data may conflict.
+`FavoritesToggleCustom.ini` in the same folder can override the shipped file.
+Changes require a game restart.
 
 ## Building
 
-Clone recursively, then build with Xmake 3.0.8 or newer, the Visual Studio C++
-toolchain, and the Windows SDK:
+Clone recursively and generate the Visual Studio solution once:
 
 ```powershell
-git clone --recurse-submodules https://github.com/QTR-Modding/FavoritesToggle.git
-cd FavoritesToggle
-xmake f -m release -a x64 -y
-xmake -y
+xmake project -k vsxmake -m "debug,release,releasedbg"
 ```
 
-The DLL is written to:
+Open the generated `FavoritesToggle.sln` and build normally in Visual Studio.
 
-```text
-build/windows/x64/release/FavoritesToggle.dll
-```
+## License
 
-## License and source
-
-Favorites Toggle is licensed under GPL-3.0-or-later with the exceptions in
-`EXCEPTIONS`. Dependency revisions and corresponding-source details are in
-`SOURCE.md`; third-party notices are in `THIRD_PARTY_NOTICES.md` and
-`LICENSES/`.
+GPL-3.0-or-later with the exceptions in [EXCEPTIONS](EXCEPTIONS).
