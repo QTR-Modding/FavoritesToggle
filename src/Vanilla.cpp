@@ -1,5 +1,7 @@
 #include "Hooks.h"
 
+#include <cstring>
+
 namespace FavoritesToggle::Vanilla
 {
 	namespace
@@ -7,11 +9,12 @@ namespace FavoritesToggle::Vanilla
 		constexpr std::ptrdiff_t kInventoryCallOffset = 0x2F6;
 		constexpr std::ptrdiff_t kSpellStateCallOffset = 0x377;
 
-		using UseInventoryItem = decltype(&RE::ActorEquipManager::UseInventoryItem);
+		using UseInventoryItem = bool (*)(RE::ActorEquipManager*, RE::Actor*, const RE::InventoryInterface::Handle*,
+            std::uint8_t, bool, bool, bool);
 		using SpellState = bool (*)(void*, RE::Actor*, RE::SpellItem*);
 
-		REL::Relocation<UseInventoryItem> originalUseInventoryItem;
-		REL::Relocation<SpellState>       originalSpellState;
+		UseInventoryItem originalUseInventoryItem{};
+		SpellState originalSpellState{};
 
 		bool UseInventoryItemHook(
 			RE::ActorEquipManager*                a_equipManager,
@@ -55,53 +58,60 @@ namespace FavoritesToggle::Vanilla
 
 	bool Install()
 	{
-		const REL::Relocation<UseInventoryItem> useInventoryItem{
-			RE::ID::ActorEquipManager::UseInventoryItem
+		constexpr std::uint8_t inventoryBefore[]{
+			0xC6, 0x44, 0x24, 0x30, 0x01, 0xC6, 0x44, 0x24, 0x28, 0x00, 0xC6, 0x44, 0x24, 0x20, 0x00,
+			0x4C, 0x8D, 0x45, 0x67, 0x48, 0x8B, 0x15, 0xC1, 0x3B, 0x08, 0x04, 0x48, 0x8B, 0x0D, 0xCA,
+			0x2E, 0x32, 0x04
 		};
-		REL::Relocation inventoryCall{
-			RE::ID::FavoritesManager::UseQuickkey,
-			kInventoryCallOffset
+		constexpr std::uint8_t inventoryAfter[]{ 0x0F, 0xB6, 0xF8 };
+		constexpr std::uint8_t spellBefore[]{ 0x4C, 0x8B, 0xC3, 0x48, 0x8B, 0x15, 0x39, 0x3B, 0x08, 0x04 };
+		constexpr std::uint8_t spellAfter[]{ 0x84, 0xC0, 0x0F, 0x85, 0xF8, 0x00, 0x00, 0x00 };
+		constexpr std::uint8_t spellPrologue[]{
+			0x48, 0x89, 0x5C, 0x24, 0x10, 0x48, 0x89, 0x6C, 0x24, 0x18,
+			0x48, 0x89, 0x74, 0x24, 0x20, 0x48, 0x89, 0x4C, 0x24, 0x08
 		};
-		REL::Relocation spellCall{
-			RE::ID::FavoritesManager::UseQuickkey,
-			kSpellStateCallOffset
+		const auto useInventoryItem = SF1::ResolveID(101954);
+		const auto useQuickkey = SF1::ResolveID(RE::FavoritesManager::kUseQuickkeyID.value);
+		const auto inventoryCall = useQuickkey + kInventoryCallOffset;
+		const auto spellCall = useQuickkey + kSpellStateCallOffset;
+		const auto spellState = SF1::Hooks::CallTarget(spellCall);
+		const auto matches = [](std::uintptr_t address, std::span<const std::uint8_t> bytes) {
+			return std::memcmp(reinterpret_cast<const void*>(address), bytes.data(), bytes.size()) == 0;
 		};
-		const auto spellState = REL::ASM::CALL5::TARGET(spellCall.address());
-
-		if (!REL::Pattern<
-				"C6 44 24 30 01 C6 44 24 28 00 C6 44 24 20 00 "
-				"4C 8D 45 67 48 8B 15 C1 3B 08 04 "
-				"48 8B 0D CA 2E 32 04 E8 ?? ?? ?? ?? 0F B6 F8">()
-				.match(inventoryCall.address() - 33) ||
-			REL::ASM::CALL5::TARGET(inventoryCall.address()) != useInventoryItem.address()) {
+		if (!matches(inventoryCall - sizeof(inventoryBefore), inventoryBefore) ||
+			!matches(inventoryCall + SF1::Hooks::callSize, inventoryAfter) ||
+			SF1::Hooks::CallTarget(inventoryCall) != useInventoryItem) {
 			logger::error("Vanilla inventory hook signature mismatch");
 			return false;
 		}
-		if (!REL::Pattern<
-				"4C 8B C3 48 8B 15 39 3B 08 04 "
-				"E8 ?? ?? ?? ?? 84 C0 0F 85 F8 00 00 00">()
-				.match(spellCall.address() - 10) ||
-			!REL::Pattern<
-				"48 89 5C 24 10 48 89 6C 24 18 "
-				"48 89 74 24 20 48 89 4C 24 08">()
-				.match(spellState)) {
+		if (!spellState || !matches(spellCall - sizeof(spellBefore), spellBefore) ||
+			!matches(spellCall + SF1::Hooks::callSize, spellAfter) ||
+			!matches(spellState, spellPrologue)) {
 			logger::error("Vanilla Power hook signature mismatch");
 			return false;
 		}
 
 		auto& trampoline = REL::GetTrampoline();
-		const auto inventoryRelay = trampoline.allocate_branch5(
+		const auto inventoryRelay = SF1::Hooks::AllocateCallRelay(trampoline,
 			reinterpret_cast<std::uintptr_t>(&UseInventoryItemHook));
-		const auto spellRelay = trampoline.allocate_branch5(
+		const auto spellRelay = SF1::Hooks::AllocateCallRelay(trampoline,
 			reinterpret_cast<std::uintptr_t>(&FilterSpellState));
+		if (!SF1::Hooks::CanReachCall(inventoryCall, inventoryRelay) ||
+			!SF1::Hooks::CanReachCall(spellCall, spellRelay)) {
+			logger::error("Vanilla favorite hook relay is unavailable");
+			return false;
+		}
 
-		originalUseInventoryItem = inventoryCall.write_call<5>(&UseInventoryItemHook);
-		originalSpellState = spellCall.write_call<5>(&FilterSpellState);
-		if (originalUseInventoryItem.address() != useInventoryItem.address() ||
-			originalSpellState.address() != spellState ||
-			REL::ASM::CALL5::TARGET(inventoryCall.address()) != inventoryRelay ||
-			REL::ASM::CALL5::TARGET(spellCall.address()) != spellRelay) {
-			logger::error("Vanilla hook installation failed");
+		originalUseInventoryItem = reinterpret_cast<UseInventoryItem>(useInventoryItem);
+		originalSpellState = reinterpret_cast<SpellState>(spellState);
+		if (!SF1::Hooks::WriteCall(inventoryCall, inventoryRelay) || !SF1::Hooks::WriteCall(spellCall, spellRelay)) {
+			const auto restore = [](std::uintptr_t site, std::uintptr_t relay, std::uintptr_t original) {
+				const auto current = SF1::Hooks::CallTarget(site);
+				return current == original || (current == relay && SF1::Hooks::WriteCall(site, original));
+			};
+			const bool inventoryRestored = restore(inventoryCall, inventoryRelay, useInventoryItem);
+			const bool spellRestored = restore(spellCall, spellRelay, spellState);
+			logger::error("Vanilla hook installation failed; rollback verified: {}", inventoryRestored && spellRestored);
 			return false;
 		}
 
