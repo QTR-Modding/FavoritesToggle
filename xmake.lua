@@ -1,6 +1,5 @@
 set_xmakever("3.0.9")
 set_policy("package.requires_lock", true)
-set_config("commonlib_ini", true)
 
 if is_plat("windows") then
     local project_root = os.projectdir()
@@ -18,8 +17,14 @@ if is_plat("windows") then
     })
 end
 
-local commonlibsf = path.join(os.projectdir(), "lib", "commonlibsf")
-includes(commonlibsf)
+option("sf1sdk_dir")
+    set_default("../SF1SDK")
+    set_showmenu(true)
+    set_description("Directory containing the SF1SDK checkout")
+option_end()
+
+includes(get_config("sf1sdk_dir") or "../SF1SDK")
+add_requires("spdlog v1.16.0", { configs = { header_only = false, wchar = true, std_format = true } })
 
 local plugin_name = "FavoritesToggle"
 local plugin_version = "1.0.0"
@@ -31,22 +36,31 @@ set_license("GPL-3.0-or-later")
 set_languages("c++23")
 set_warnings("allextra")
 
+local plugin_description = "Toggles equipped favorites"
+local major, minor, patch = plugin_version:match("^(%d+)%.(%d+)%.(%d+)$")
+local packed_version = tonumber(major) * 16777216 + tonumber(minor) * 65536 + tonumber(patch) * 16
+
 add_rules("mode.debug", "mode.releasedbg", "mode.release")
 add_rules("plugin.vsxmake.autoupdate")
 
 target(plugin_name)
     set_pcxxheader("src/PCH.h")
-    add_defines("_SILENCE_CXX23_ALIGNED_STORAGE_DEPRECATION_WARNING")
-    add_rules("commonlibsf.plugin", {
-        name = plugin_name,
-        author = plugin_author,
-        options = {
-            sig_scanning = false,
-            address_library = true,
-            no_struct_use = false,
-            layout_dependent = true
-        }
-    })
+    add_defines("_SILENCE_CXX23_ALIGNED_STORAGE_DEPRECATION_WARNING", "NOMINMAX", "WIN32_LEAN_AND_MEAN")
+    set_kind("shared")
+    add_rules("sf1sdk.plugin", { stage = true })
+    add_deps("SF1SDK")
+    add_packages("spdlog")
+    add_files("src/Version.rc")
+    add_defines(
+        'PLUGIN_NAME="' .. plugin_name .. '"',
+        'PLUGIN_AUTHOR="' .. plugin_author .. '"',
+        'PLUGIN_DESCRIPTION="' .. plugin_description .. '"',
+        'PLUGIN_VERSION_TEXT="' .. plugin_version .. '"',
+        "PLUGIN_VERSION_MAJOR=" .. major,
+        "PLUGIN_VERSION_MINOR=" .. minor,
+        "PLUGIN_VERSION_PATCH=" .. patch,
+        "PLUGIN_VERSION_PACKED=" .. packed_version
+    )
 
     add_files(
         "src/plugin.cpp",
@@ -55,7 +69,7 @@ target(plugin_name)
         "src/FME.cpp"
     )
     add_headerfiles("src/PCH.h", "src/Hooks.h")
-    add_includedirs("src")
+    add_includedirs("src", "external/simpleini")
     add_installfiles("config/FavoritesToggle.ini", {
         prefixdir = "SFSE/Plugins"
     })

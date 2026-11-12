@@ -1,30 +1,41 @@
 #include "Hooks.h"
 
+#include <SimpleIni.h>
+
 namespace FavoritesToggle::Settings
 {
 	namespace
 	{
-		REX::TIniSetting weapons{ "Toggle", "Weapons", true };
-		REX::TIniSetting armor{ "Toggle", "Armor", true };
-		REX::TIniSetting powers{ "Toggle", "Powers", true };
+		bool weapons = true;
+		bool armor = true;
+		bool powers = true;
 	}
 
 	void Load()
 	{
-		const auto store = REX::FIniSettingStore::GetSingleton();
-		store->Init(
-			"Data/SFSE/Plugins/FavoritesToggle.ini",
-			"Data/SFSE/Plugins/FavoritesToggleCustom.ini");
-		store->Load();
+		CSimpleIniA config;
+		config.SetUnicode(true);
+		config.SetQuotes(true);
+		const auto read = [&config] {
+			weapons = config.GetBoolValue("Toggle", "Weapons", weapons);
+			armor = config.GetBoolValue("Toggle", "Armor", armor);
+			powers = config.GetBoolValue("Toggle", "Powers", powers);
+		};
+		if (config.LoadFile("Data/SFSE/Plugins/FavoritesToggle.ini") >= 0) {
+			read();
+		}
+		if (config.LoadFile("Data/SFSE/Plugins/FavoritesToggleCustom.ini") >= 0) {
+			read();
+		}
 	}
 
 	bool Allows(const RE::TESForm& a_form)
 	{
 		switch (a_form.GetFormType()) {
 		case RE::FormType::kWEAP:
-			return weapons.GetValue();
+			return weapons;
 		case RE::FormType::kARMO:
-			return armor.GetValue();
+			return armor;
 		default:
 			return false;
 		}
@@ -32,6 +43,6 @@ namespace FavoritesToggle::Settings
 
 	bool Powers()
 	{
-		return powers.GetValue();
+		return powers;
 	}
 }

@@ -1,8 +1,7 @@
 #pragma once
 
-#include "RE/Starfield.h"
-#include "REL/Relocation.h"
-#include "SFSE/SFSE.h"
+#include <SF1SDK/Starfield.h>
+#include <SF1SDK/Hooks.h>
 
 #include <spdlog/spdlog.h>
 

@@ -1,5 +1,7 @@
 #include "Hooks.h"
 
+#include <cstring>
+
 namespace FavoritesToggle::FME
 {
 	namespace
@@ -7,13 +9,13 @@ namespace FavoritesToggle::FME
 		using Value = RE::Scaleform::GFx::Value;
 		using UseFavorite = void (*)(RE::TESBoundObject*);
 
-		constexpr std::string_view              kModuleName = "FavoritesMenuExtended.dll";
+		constexpr auto                          kModuleName = L"FavoritesMenuExtended.dll";
 		constexpr std::uintptr_t                kUseFavoriteRva = 0x25730;
 		constexpr std::array<std::uintptr_t, 4> kCallRvas{ 0x28871, 0x28B3D, 0x2B7A9, 0x2BA7D };
 		constexpr auto                          kPowerSource = RE::MagicSystem::CastingSource::kOther;
 		constexpr std::uint32_t                 kConfirmKeyCode = 13;
 
-		REL::Relocation<UseFavorite> originalUseFavorite;
+		UseFavorite originalUseFavorite{};
 		std::atomic_bool             enabled{ false };
 		std::atomic_uint64_t         activationGeneration{ 0 };
 		std::atomic_uint64_t         consumedGeneration{ 0 };
@@ -32,32 +34,15 @@ namespace FavoritesToggle::FME
 			return offset <= a_section.GetSize() && a_size <= a_section.GetSize() - offset;
 		}
 
-		[[nodiscard]] bool CanReachCall5(const std::uintptr_t a_callsite, const std::uintptr_t a_target) noexcept
-		{
-			constexpr auto callSize = sizeof(REL::ASM::CALL5);
-			if (a_callsite > std::numeric_limits<std::uintptr_t>::max() - callSize) {
-				return false;
-			}
-
-			const auto nextInstruction = a_callsite + callSize;
-			if (a_target >= nextInstruction) {
-				return a_target - nextInstruction <=
-				       static_cast<std::uintptr_t>(std::numeric_limits<std::int32_t>::max());
-			}
-
-			constexpr auto negativeLimit =
-				static_cast<std::uintptr_t>(std::numeric_limits<std::int32_t>::max()) + 1;
-			return nextInstruction - a_target <= negativeLimit;
-		}
-
 		[[nodiscard]] RE::SpellItem* GetQuantumEssence()
 		{
 			static RE::SpellItem* spell = nullptr;
 			if (!spell) {
-				const auto defaultObject =
-					RE::TESForm::LookupByEditorID<RE::BGSDefaultObject>("QuantumEssenceSpell_DO");
-				if (defaultObject && defaultObject->object) {
-					spell = defaultObject->object->As<RE::SpellItem>();
+				const auto form = RE::TESForm::LookupByEditorID(RE::BSFixedString{ "QuantumEssenceSpell_DO" });
+				if (const auto defaultObject = form ? form->As<RE::BGSDefaultObject>() : nullptr) {
+					if (const auto essence = defaultObject->Object()) {
+						spell = essence->As<RE::SpellItem>();
+					}
 				}
 			}
 			return spell;
@@ -74,8 +59,8 @@ namespace FavoritesToggle::FME
 				}
 
 				found = true;
-				instanceData = a_item.instanceData;
-				locked = a_item.flags.any(RE::BGSInventoryItem::Flag::kEquipStateLocked);
+				instanceData = a_item.InstanceData();
+				locked = a_item.IsEquipStateLocked();
 				return RE::BSContainer::ForEachResult::kStop;
 			});
 
@@ -92,7 +77,9 @@ namespace FavoritesToggle::FME
 			}
 
 			const RE::BGSObjectInstance instance(&a_form, instanceData.get());
-			equipManager->UnequipObject(&a_player, instance, nullptr, true, false, true, false, nullptr);
+			if (!equipManager->UnequipObject(&a_player, instance, nullptr, true, false, true, false, nullptr)) {
+				logger::debug("Could not unequip the selected favorite");
+			}
 			return true;
 		}
 
@@ -220,8 +207,8 @@ namespace FavoritesToggle::FME
 					RE::Scaleform::make_shared<FavoritesUseListener>(false);
 				static const auto keyListener =
 					RE::Scaleform::make_shared<FavoritesUseListener>(true);
-				root->CreateFunction(&mouseCallback, mouseListener.get());
-				root->CreateFunction(&keyCallback, keyListener.get());
+				root->CreateFunction(&mouseCallback, mouseListener.get(), nullptr);
+				root->CreateFunction(&keyCallback, keyListener.get(), nullptr);
 				Value mouseEvent;
 				Value keyEvent;
 				root->CreateString(&mouseEvent, "FavoritesEntry::mouse_click");
@@ -248,8 +235,7 @@ namespace FavoritesToggle::FME
 			return true;
 		}
 
-		const auto version = REL::GetFileVersion(module.GetFileName());
-		if (!version || *version != REL::Version{ 5, 0, 0, 0 }) {
+		if (module.GetFileVersion() != (5U << 24)) {
 			logger::error("Favorites Menu Extended compatibility requires version 5.0.0");
 			return false;
 		}
@@ -260,43 +246,51 @@ namespace FavoritesToggle::FME
 		}
 		const auto text = module.GetSection(".text");
 		const auto originalTarget = base + kUseFavoriteRva;
-		if (!Contains(text, originalTarget, 22) ||
-			!REL::Pattern<
-				"48 89 5C 24 10 48 89 6C 24 18 56 57 41 54 41 56 41 57 48 83 EC 70">()
-				.match(originalTarget)) {
+		constexpr std::uint8_t prologue[]{
+			0x48, 0x89, 0x5C, 0x24, 0x10, 0x48, 0x89, 0x6C, 0x24, 0x18, 0x56,
+			0x57, 0x41, 0x54, 0x41, 0x56, 0x41, 0x57, 0x48, 0x83, 0xEC, 0x70
+		};
+		if (!Contains(text, originalTarget, sizeof(prologue)) ||
+			std::memcmp(reinterpret_cast<const void*>(originalTarget), prologue, sizeof(prologue)) != 0) {
 			logger::error("Favorites Menu Extended use-favorite signature mismatch");
 			return false;
 		}
 
 		for (const auto rva : kCallRvas) {
 			const auto callsite = base + rva;
-			if (!Contains(text, callsite, sizeof(REL::ASM::CALL5)) ||
-				*reinterpret_cast<const std::uint8_t*>(callsite) != 0xE8 ||
-				REL::ASM::CALL5::TARGET(callsite) != originalTarget) {
+			if (!Contains(text, callsite, SF1::Hooks::callSize) ||
+				SF1::Hooks::CallTarget(callsite) != originalTarget) {
 				logger::error("Favorites Menu Extended callsite mismatch at RVA 0x{:X}", rva);
 				return false;
 			}
 		}
 
-		originalUseFavorite = originalTarget;
+		static SF1::Hooks::NearBranchPool trampoline;
 		const auto anchor = base + kCallRvas[kCallRvas.size() / 2];
-		static REL::Trampoline trampoline{ "FavoritesMenuExtended" };
-		trampoline.create(sizeof(REL::ASM::JMP14), reinterpret_cast<void*>(anchor));
-
-		const auto relay =
-			trampoline.allocate_branch5(reinterpret_cast<std::uintptr_t>(&UseFavoriteHook));
+		if (!trampoline.Initialize(anchor, sizeof(REL::ASM::JMP14))) {
+			logger::error("Favorites Menu Extended trampoline could not be allocated");
+			return false;
+		}
+		const auto relay = SF1::Hooks::AllocateCallRelay(trampoline.GetTrampoline(),
+			reinterpret_cast<std::uintptr_t>(&UseFavoriteHook));
 		for (const auto rva : kCallRvas) {
-			if (!CanReachCall5(base + rva, relay)) {
+			if (!SF1::Hooks::CanReachCall(base + rva, relay)) {
 				logger::error("Favorites Menu Extended trampoline is unreachable");
 				return false;
 			}
 		}
 
+		originalUseFavorite = reinterpret_cast<UseFavorite>(originalTarget);
 		for (const auto rva : kCallRvas) {
-			const auto callsite = base + rva;
-			const auto original = trampoline.write_call<5>(callsite, &UseFavoriteHook);
-			if (original != originalTarget || REL::ASM::CALL5::TARGET(callsite) != relay) {
-				logger::error("Favorites Menu Extended hook failed at RVA 0x{:X}", rva);
+			if (!SF1::Hooks::WriteCall(base + rva, relay)) {
+				bool restored = true;
+				for (const auto restoreRva : kCallRvas) {
+					const auto site = base + restoreRva;
+					if (SF1::Hooks::CallTarget(site) == relay && !SF1::Hooks::WriteCall(site, originalTarget)) {
+						restored = false;
+					}
+				}
+				logger::error("Favorites Menu Extended hook failed at RVA 0x{:X}; rollback verified: {}", rva, restored);
 				return false;
 			}
 		}
